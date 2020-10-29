@@ -67,21 +67,22 @@ type dbStruct struct {
 	tables           []string //自定义表
 	tagJson          bool     //json tag
 	tagOrm           bool     //orm tag
-	fieldNameFmt     FmtMode
-	structNameFmt    FmtMode
-	fileNameFmt      FmtMode
-	genTableName     string
-	genTableNameFunc bool
-	modelPath        string
-	singleFile       bool
-	packageName      string
-	tags             []*Tag
+	fieldNameFmt     FmtMode  //字段名称格式
+	structNameFmt    FmtMode  //结构名格式
+	fileNameFmt      FmtMode  //文件名格式
+	genTableName     string   //TableName方法名，
+	genTableNameFunc bool     //是否生成TableName方法
+	modelPath        string   //model保存的路径，若singleFile==true，则填写model.go的完整路径，默认为当前路径
+	singleFile       bool     //是否合成一个单文件
+	packageName      string   //包名
+	tags             []*Tag   //自定义Tag列表
 	db               *sql.DB
 	err              error
 }
 
 func NewDBStruct() *dbStruct {
-	return &dbStruct{}
+	return &dbStruct{fieldNameFmt: FmtDefault, structNameFmt: FmtDefault, fileNameFmt: FmtDefault,
+		genTableName: "TableName"}
 }
 
 func (ds *dbStruct) Dsn(v string) *dbStruct {
