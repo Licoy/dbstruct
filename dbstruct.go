@@ -12,6 +12,8 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"sync"
+	"time"
 	"unicode"
 )
 
@@ -174,8 +176,15 @@ func (ds *dbStruct) connectDB() {
 	}
 }
 
+type genStructRes struct {
+	structName string
+	content    string
+	err        error
+}
+
 //生成
 func (ds *dbStruct) Generate() (err error) {
+	startTime := time.Now().UnixNano()
 	if ds.dsn == "" {
 		return errors.New("DSN未配置")
 	}
@@ -194,13 +203,27 @@ func (ds *dbStruct) Generate() (err error) {
 	if err != nil {
 		return
 	}
+
 	writes := make(map[string]string)
+	gch := make(chan *genStructRes, len(tables))
+
+	group := &sync.WaitGroup{}
+	group.Add(len(tables))
+
 	for table, columns := range tables {
-		structName, content, err := ds.genStruct(table, columns)
-		if err != nil {
-			log.Fatalf("%s结构生成失败：%s\n", table, err.Error())
+		go ds.genStruct(table, columns, gch, group)
+	}
+
+	group.Wait()
+
+	close(gch)
+
+	for {
+		gchRes, ok := <-gch
+		if !ok {
+			break
 		}
-		writes[structName] = content
+		writes[gchRes.structName] = gchRes.content
 	}
 
 	if ds.modelPath == "" {
@@ -253,21 +276,33 @@ func (ds *dbStruct) Generate() (err error) {
 			return err
 		}
 
+		group.Add(len(writes))
+
 		for name, content := range writes {
-			filename := ds.getFormatName(name, ds.fileNameFmt)
-			filename = fmt.Sprintf("%s/%s.go", ds.modelPath, filename)
-			err := ds.writeStruct(filename, content)
-			if err != nil {
-				log.Fatalf("write struct fail(%s) : %s ", filename, err.Error())
-				continue
-			}
-			cmd := exec.Command("gofmt", "-w", filename)
-			_ = cmd.Run()
+			go ds.writeManyFile(name, content, group)
 		}
+
+		group.Wait()
 
 	}
 
+	endTime := time.Now().UnixNano()
+
+	log.Printf("DbStruct生成完成，累计耗时 %d 纳秒", endTime-startTime)
+
 	return
+}
+
+func (ds *dbStruct) writeManyFile(name string, content string, group *sync.WaitGroup) {
+	defer group.Done()
+	filename := ds.getFormatName(name, ds.fileNameFmt)
+	filename = fmt.Sprintf("%s/%s.go", ds.modelPath, filename)
+	err := ds.writeStruct(filename, content)
+	if err != nil {
+		log.Fatalf("write struct fail(%s) : %s ", filename, err.Error())
+	}
+	cmd := exec.Command("gofmt", "-w", filename)
+	_ = cmd.Run()
 }
 
 func (ds *dbStruct) getFormatName(s string, m FmtMode) (res string) {
@@ -323,9 +358,10 @@ func (ds *dbStruct) getColumnGoType(dbType string) (res string) {
 	return
 }
 
-func (ds *dbStruct) genStruct(table string, columns []column) (structName string, content string, err error) {
+func (ds *dbStruct) genStruct(table string, columns []column, ch chan *genStructRes, group *sync.WaitGroup) {
+	defer group.Done()
 	buffer := bytes.Buffer{}
-	structName = ds.getFormatName(table, ds.structNameFmt)
+	structName := ds.getFormatName(table, ds.structNameFmt)
 	if !ds.singleFile {
 		buffer.WriteString(fmt.Sprintf("package %s\n\n", ds.packageName))
 	}
@@ -348,8 +384,8 @@ func (ds *dbStruct) genStruct(table string, columns []column) (structName string
 		buffer.WriteString(fmt.Sprintf("func (%s *%s) %s() string {\n\treturn \"%s\"\n}", strings.ToLower(structName[0:1]),
 			structName, ds.genTableName, table))
 	}
-	content = buffer.String()
-	return
+	content := buffer.String()
+	ch <- &genStructRes{structName, content, nil}
 }
 
 func (ds *dbStruct) getTables() (tables map[string][]column, err error) {
