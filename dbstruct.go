@@ -288,7 +288,7 @@ func (ds *dbStruct) Generate() (err error) {
 
 	endTime := time.Now().UnixNano()
 
-	log.Printf("DbStruct生成完成，累计耗时 %d 纳秒", endTime-startTime)
+	log.Printf("DbStruct生成完成，累计耗时 %d 毫秒", (endTime-startTime)/1e6)
 
 	return
 }

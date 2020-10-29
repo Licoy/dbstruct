@@ -12,7 +12,7 @@ func TestNewDBStruct(t *testing.T) {
 		StructNameFmt(FmtUnderlineToStartUpHump).
 		FieldNameFmt(FmtUnderlineToStartUpHump).
 		FileNameFmt(FmtUnderline).
-		SingleFile(true).
+		//SingleFile(true).
 		GenTableNameFunc(true).
 		GenTableName("TableName").
 		TagJson(true).
