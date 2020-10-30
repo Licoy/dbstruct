@@ -2,19 +2,19 @@
 `dbstruct`是一款将数据库表一键转换为Golang Struct的应用程序，支持自定义Tag和多种命名格式配置。
 ## 参数列表
 ```go
-        dsn              string   //数据库链接
-	tables           []string //自定义表
-	tagJson          bool     //json tag
-	tagOrm           bool     //orm tag
-	fieldNameFmt     FmtMode  //字段名称格式
-	structNameFmt    FmtMode  //结构名格式
-	fileNameFmt      FmtMode  //文件名格式
-	genTableName     string   //TableName方法名，
-	genTableNameFunc bool     //是否生成TableName方法
-	modelPath        string   //model保存的路径，若singleFile==true，则填写model.go的完整路径，默认为当前路径
-	singleFile       bool     //是否合成一个单文件
-	packageName      string   //包名
-	tags             []*Tag   //自定义Tag列表
+dsn              string   //数据库链接
+tables           []string //自定义表
+tagJson          bool     //json tag
+tagOrm           bool     //orm tag
+fieldNameFmt     FmtMode  //字段名称格式
+structNameFmt    FmtMode  //结构名格式
+fileNameFmt      FmtMode  //文件名格式
+genTableName     string   //TableName方法名，
+genTableNameFunc bool     //是否生成TableName方法
+modelPath        string   //model保存的路径，若singleFile==true，则填写model.go的完整路径，默认为当前路径
+singleFile       bool     //是否合成一个单文件
+packageName      string   //包名
+tags             []*Tag   //自定义Tag列表
 ```
 ## 使用方法
 ### 安装依赖
