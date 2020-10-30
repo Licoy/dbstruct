@@ -177,9 +177,10 @@ func (ds *dbStruct) connectDB() {
 }
 
 type genStructRes struct {
-	structName string
-	content    string
-	err        error
+	structName        string
+	content           string
+	err               error
+	needImportTimePkg bool
 }
 
 //生成
@@ -218,12 +219,17 @@ func (ds *dbStruct) Generate() (err error) {
 
 	close(gch)
 
+	needImportTimePkg := false
+
 	for {
 		gchRes, ok := <-gch
 		if !ok {
 			break
 		}
 		writes[gchRes.structName] = gchRes.content
+		if !needImportTimePkg {
+			needImportTimePkg = gchRes.needImportTimePkg
+		}
 	}
 
 	if ds.modelPath == "" {
@@ -255,6 +261,9 @@ func (ds *dbStruct) Generate() (err error) {
 
 		finalContent := bytes.Buffer{}
 		finalContent.WriteString(fmt.Sprintf("package %s\n\n", ds.packageName))
+		if needImportTimePkg {
+			finalContent.WriteString("import \"time\"\n\n")
+		}
 		for _, content := range writes {
 			finalContent.WriteString(content)
 			finalContent.WriteString("\n\n\n")
@@ -361,23 +370,40 @@ func (ds *dbStruct) getColumnGoType(dbType string) (res string) {
 func (ds *dbStruct) genStruct(table string, columns []column, ch chan *genStructRes, group *sync.WaitGroup) {
 	defer group.Done()
 	buffer := bytes.Buffer{}
+	res := &genStructRes{"", "", nil, false}
 	structName := ds.getFormatName(table, ds.structNameFmt)
+	res.structName = structName
 	if !ds.singleFile {
-		buffer.WriteString(fmt.Sprintf("package %s\n\n", ds.packageName))
+		buffer.WriteString(fmt.Sprintf("package %s\n\n {@importTimePkg@}\n\n ", ds.packageName))
 	}
 	buffer.WriteString(fmt.Sprintf("type %s struct {\n", structName))
+	importTimePkgStr := ""
 	for _, column := range columns {
 		columnName := ds.getFormatName(column.Name, ds.fieldNameFmt)
 		goType := ds.getColumnGoType(column.Type)
+		if importTimePkgStr == "" && goType == "time.Time" && !ds.singleFile {
+			importTimePkgStr = "import \"time\"\n\n"
+		} else if !res.needImportTimePkg && ds.singleFile && goType == "time.Time" {
+			res.needImportTimePkg = true
+		}
 		tagString := ""
 		if ds.tags != nil && len(ds.tags) > 0 {
 			tagString = "`"
-			for _, tag := range ds.tags {
-				tagString += fmt.Sprintf("%s:\"%s\" ", tag.TagName, ds.getFormatName(column.Name, tag.Mode))
+			for i, tag := range ds.tags {
+				if i == len(ds.tags)-1 {
+					tagString += fmt.Sprintf("%s:\"%s\"", tag.TagName, ds.getFormatName(column.Name, tag.Mode))
+				} else {
+					tagString += fmt.Sprintf("%s:\"%s\" ", tag.TagName, ds.getFormatName(column.Name, tag.Mode))
+				}
 			}
 			tagString += "`"
 		}
-		buffer.WriteString(fmt.Sprintf("%s %s %s\n", columnName, goType, tagString))
+		//字段释义
+		if column.Comment != "" {
+			buffer.WriteString(fmt.Sprintf("\t// %s\n", column.Comment))
+		}
+		//字段结构
+		buffer.WriteString(fmt.Sprintf("\t%s %s %s\n", columnName, goType, tagString))
 	}
 	buffer.WriteString("}\n\n")
 	if ds.genTableNameFunc && ds.genTableName != "" {
@@ -385,7 +411,9 @@ func (ds *dbStruct) genStruct(table string, columns []column, ch chan *genStruct
 			structName, ds.genTableName, table))
 	}
 	content := buffer.String()
-	ch <- &genStructRes{structName, content, nil}
+	content = strings.Replace(content, "{@importTimePkg@}", importTimePkgStr, 1)
+	res.content = content
+	ch <- res
 }
 
 func (ds *dbStruct) getTables() (tables map[string][]column, err error) {

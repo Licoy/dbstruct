@@ -8,11 +8,11 @@ import (
 func TestNewDBStruct(t *testing.T) {
 	dbStruct := NewDBStruct()
 	err := dbStruct.
-		Dsn("root:root@tcp(127.0.0.1:3306)/hm?charset=utf8").
+		Dsn("root:root@tcp(127.0.0.1:3306)/wp-puock?charset=utf8").
 		StructNameFmt(FmtUnderlineToStartUpHump).
 		FieldNameFmt(FmtUnderlineToStartUpHump).
 		FileNameFmt(FmtUnderline).
-		//SingleFile(true).
+		SingleFile(true).
 		GenTableNameFunc(true).
 		GenTableName("TableName").
 		TagJson(true).
