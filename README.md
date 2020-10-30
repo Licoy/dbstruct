@@ -23,26 +23,21 @@ go get github.com/Licoy/dbstruct
 ```
 ### 使用
 ```go
-func TestNewDBStruct(t *testing.T) {
-	dbStruct := NewDBStruct()
-	err := dbStruct.
-		Dsn("root:root@tcp(127.0.0.1:3306)/hm?charset=utf8").
-		StructNameFmt(FmtUnderlineToStartUpHump).
-		FieldNameFmt(FmtUnderlineToStartUpHump).
-		FileNameFmt(FmtUnderline).
-		SingleFile(true).
-		GenTableNameFunc(true).
-		GenTableName("MyTableName").
-		TagJson(true).
-		PackageName("model").
-		TagOrm(true).
-		AppendTag(NewTag("xml", FmtDefault)).
-		Generate()
-	if err != nil {
-		t.Error(err)
-	} else {
-		fmt.Println("ok.")
-	}
+err := dbstruct.NewDBStruct().
+    Dsn("root:root@tcp(127.0.0.1:3306)/dbname?charset=utf8").
+    StructNameFmt(dbstruct.FmtUnderlineToStartUpHump).
+    FieldNameFmt(dbstruct.FmtUnderlineToStartUpHump).
+    FileNameFmt(dbstruct.FmtUnderline).
+    //SingleFile(true).
+    GenTableNameFunc(true).
+    GenTableName("TableName").
+    TagJson(true).
+    PackageName("model").
+    TagOrm(true).
+    AppendTag(dbstruct.NewTag("xml", dbstruct.FmtDefault)).
+    Generate()
+if err != nil {
+    fmt.Println(err)
 }
 ```
 ### 生成结果示例
