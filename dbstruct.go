@@ -107,6 +107,11 @@ func (ds *dbStruct) GenTableNameFunc(v bool) *dbStruct {
 	return ds
 }
 
+func (ds *dbStruct) ModelPath(v string) *dbStruct {
+	ds.modelPath = v
+	return ds
+}
+
 func (ds *dbStruct) SingleFile(v bool) *dbStruct {
 	ds.singleFile = v
 	return ds
@@ -430,6 +435,7 @@ func (ds *dbStruct) getTables() (tables map[string][]column, err error) {
 			}
 		}
 		buff.WriteString(")")
+		tableIn = buff.String()
 	}
 	sqlString := fmt.Sprintf("SELECT COLUMN_NAME AS `Name`,DATA_TYPE AS `Type`,IS_NULLABLE AS `Nullable`,TABLE_NAME AS "+
 		"`Table`,COLUMN_COMMENT AS `Comment` FROM information_schema.COLUMNS WHERE table_schema=DATABASE () %s ORDER BY"+
