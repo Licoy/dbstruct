@@ -71,20 +71,23 @@ type dbStruct struct {
 	tagOrm           bool     //orm tag
 	fieldNameFmt     FmtMode  //字段名称格式
 	structNameFmt    FmtMode  //结构名格式
+	structNameSuffix string   //接口体名后缀
 	fileNameFmt      FmtMode  //文件名格式
+	fileNameSuffix   string   //文件名后缀
 	genTableName     string   //TableName方法名，
 	genTableNameFunc bool     //是否生成TableName方法
 	modelPath        string   //model保存的路径，若singleFile==true，则填写model.go的完整路径，默认为当前路径
 	singleFile       bool     //是否合成一个单文件
 	packageName      string   //包名
 	tags             []*Tag   //自定义Tag列表
+	genComment       bool     //字段注释
 	db               *sql.DB
 	err              error
 }
 
 func NewDBStruct() *dbStruct {
 	return &dbStruct{fieldNameFmt: FmtDefault, structNameFmt: FmtDefault, fileNameFmt: FmtDefault,
-		genTableName: "TableName"}
+		genTableName: "TableName", genComment: true}
 }
 
 func (ds *dbStruct) Dsn(v string) *dbStruct {
@@ -132,6 +135,16 @@ func (ds *dbStruct) StructNameFmt(v FmtMode) *dbStruct {
 	return ds
 }
 
+func (ds *dbStruct) StructNameSuffix(v string) *dbStruct {
+	ds.structNameSuffix = v
+	return ds
+}
+
+func (ds *dbStruct) FileNameSuffix(v string) *dbStruct {
+	ds.fileNameSuffix = v
+	return ds
+}
+
 func (ds *dbStruct) AppendTable(v string) *dbStruct {
 	if ds.tables == nil {
 		ds.tables = make([]string, 0, 10)
@@ -155,6 +168,11 @@ func (ds *dbStruct) AppendTag(v *Tag) *dbStruct {
 		ds.tags = make([]*Tag, 0, 10)
 	}
 	ds.tags = append(ds.tags, v)
+	return ds
+}
+
+func (ds *dbStruct) GenComment(v bool) *dbStruct {
+	ds.genComment = v
 	return ds
 }
 
@@ -310,7 +328,7 @@ func (ds *dbStruct) Generate() (err error) {
 func (ds *dbStruct) writeManyFile(name string, content string, group *sync.WaitGroup) {
 	defer group.Done()
 	filename := ds.getFormatName(name, ds.fileNameFmt)
-	filename = fmt.Sprintf("%s/%s.go", ds.modelPath, filename)
+	filename = fmt.Sprintf("%s/%s%s.go", ds.modelPath, filename, ds.fileNameSuffix)
 	err := ds.writeStruct(filename, content)
 	if err != nil {
 		log.Fatalf("write struct fail(%s) : %s ", filename, err.Error())
@@ -381,7 +399,7 @@ func (ds *dbStruct) genStruct(table string, columns []column, ch chan *genStruct
 	if !ds.singleFile {
 		buffer.WriteString(fmt.Sprintf("package %s\n\n {@importTimePkg@}\n\n ", ds.packageName))
 	}
-	buffer.WriteString(fmt.Sprintf("type %s struct {\n", structName))
+	buffer.WriteString(fmt.Sprintf("type %s%s struct {\n", structName, ds.structNameSuffix))
 	importTimePkgStr := ""
 	for _, column := range columns {
 		columnName := ds.getFormatName(column.Name, ds.fieldNameFmt)
@@ -404,7 +422,7 @@ func (ds *dbStruct) genStruct(table string, columns []column, ch chan *genStruct
 			tagString += "`"
 		}
 		//字段释义
-		if column.Comment != "" {
+		if column.Comment != "" && ds.genComment {
 			buffer.WriteString(fmt.Sprintf("\t// %s\n", column.Comment))
 		}
 		//字段结构

@@ -18,6 +18,9 @@ func main() {
 		//TagJson(true).
 		PackageName("entity").
 		ModelPath("./entity").
+		GenComment(false).
+		StructNameSuffix("Entity").
+		FileNameSuffix("_entity").
 		TagOrm(false).
 		AppendTag(dbstruct.NewTag("json", dbstruct.FmtUnderlineToStartLowHump)).
 		AppendTag(dbstruct.NewTag("mapstructure", dbstruct.FmtDefault)).
